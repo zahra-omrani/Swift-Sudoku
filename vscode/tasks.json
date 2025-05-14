@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "type": "shell",
+        "command": "g++",
+        "args": [
+          "-std=c++17",
+          "-Iinclude",
+          "src/*.cpp",
+          "main.cpp",
+          "-o",
+          "sudoku"
+        ],
+        "group": "build",
+        "problemMatcher": []
+      }
+    ]
+  }
+  
