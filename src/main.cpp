@@ -1,39 +1,42 @@
 #include "Board.h"
-#include "Timer.h"
+#include "SequentialSolver.h"
 #include "SingleThreadSolver.h"
-#include "MultiThreadSolver.h"
+#include "Timer.h"
 #include <iostream>
 
 int main() {
-    Board board;
-    board.load("sudoku.txt");
+    int puzzle[9][9] = {
+        {5,3,0,0,7,0,0,0,0},
+        {6,0,0,1,9,5,0,0,0},
+        {0,9,8,0,0,0,0,6,0},
+        {8,0,0,0,6,0,0,0,3},
+        {4,0,0,8,0,3,0,0,1},
+        {7,0,0,0,2,0,0,0,6},
+        {0,6,0,0,0,0,2,8,0},
+        {0,0,0,4,1,9,0,0,5},
+        {0,0,0,0,8,0,0,7,9}
+    };
 
-    std::cout << "Original Sudoku:\n";
+    Board board;
+    board.loadFromArray(puzzle);
+
+    std::cout << "Initial Sudoku board:\n";
     board.print();
 
+    SingleThreadSolver solver;
+
     {
-        Timer t("Single-threaded Solver");
-        SingleThreadSolver solver;
+        Timer timer("Sudoku solving");
         if (solver.solve(board)) {
-            std::cout << "\nSolved (Single-thread):\n";
+            std::cout << "\nSudoku solved successfully:\n";
             board.print();
         } else {
-            std::cout << "No solution found.\n";
+            std::cout << "\nFailed to solve the Sudoku.\n";
         }
     }
 
-    board.load("sudoku.txt");
-
-    {
-        Timer t("Multi-threaded Solver");
-        MultiThreadSolver solver;
-        if (solver.solve(board)) {
-            std::cout << "\nSolved (Multi-thread):\n";
-            board.print();
-        } else {
-            std::cout << "No solution found.\n";
-        }
-    }
+    std::cout << "Press Enter to exit...";
+    std::cin.get();
 
     return 0;
 }

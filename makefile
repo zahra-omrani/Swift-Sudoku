@@ -12,3 +12,6 @@ test: $(TEST_SRC)
 
 clean:
 	rm -f $(TEST_BIN)
+
+sudoku_solver: src/main.cpp $(PROJECT_SRC)
+	$(CXX) $(CXXFLAGS) -o sudoku_solver src/main.cpp $(PROJECT_SRC)

@@ -1,11 +1,36 @@
 #include "Timer.h"
 
-Timer::Timer(const std::string& taskName) : taskName(taskName) {
-    start = std::chrono::high_resolution_clock::now();
+Timer::Timer() {
+    // Empty constructor
+}
+
+Timer::Timer(const std::string& taskName) : taskName(taskName), hasTaskName(true) {
+    startTime = std::chrono::high_resolution_clock::now();
+}
+
+void Timer::start() {
+    stopped = false;
+    startTime = std::chrono::high_resolution_clock::now();
+}
+
+void Timer::stop() {
+    endTime = std::chrono::high_resolution_clock::now();
+    stopped = true;
+}
+
+long long Timer::elapsedMilliseconds() const {
+    auto endPoint = stopped ? endTime : std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(endPoint - startTime).count();
+}
+
+double Timer::elapsedSeconds() const {
+    auto endPoint = stopped ? endTime : std::chrono::high_resolution_clock::now();
+    return std::chrono::duration<double>(endPoint - startTime).count();
 }
 
 Timer::~Timer() {
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    std::cout << taskName << " took " << diff.count() << " seconds\n";
+    if (hasTaskName) {
+        stop();
+        std::cout << taskName << " took " << elapsedSeconds() << " seconds\n";
+    }
 }

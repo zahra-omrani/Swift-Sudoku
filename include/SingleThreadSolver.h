@@ -3,8 +3,10 @@
 
 class SingleThreadSolver : public ISolver {
 public:
+    bool solve(int board[9][9]) override;
     bool solve(Board& b) override;
+
 private:
-    bool solveRecursive(Board& b, int row, int col);
-    bool isValid(const Board& b, int row, int col, int num);
+    bool solveSudoku(int board[9][9]);
+    bool isSafe(int board[9][9], int row, int col, int num);
 };
