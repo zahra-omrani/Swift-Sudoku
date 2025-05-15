@@ -1,16 +1,14 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Iinclude -Wall
-SRCDIR = src
-INCDIR = include
-TARGET = sudoku
+CXXFLAGS = -std=c++17 -Wall -Iinclude
 
-SRC = $(wildcard $(SRCDIR)/*.cpp)
-OBJ = $(SRC:.cpp=.o)
+TEST_SRC = tests/test.cpp
+TEST_BIN = run_tests
+CATCH_SRC = src/catch_amalgamated.cpp
+PROJECT_SRC = $(filter-out src/main.cpp src/catch_amalgamated.cpp, $(wildcard src/*.cpp))
 
-all: $(TARGET)
-
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+test: $(TEST_SRC)
+	$(CXX) $(CXXFLAGS) -o $(TEST_BIN) $(TEST_SRC) $(CATCH_SRC) $(PROJECT_SRC)
+	./$(TEST_BIN)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TEST_BIN)

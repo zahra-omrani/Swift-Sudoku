@@ -1,16 +1,10 @@
-#ifndef SINGLETHREADVALIDATOR_HPP
-#define SINGLETHREADVALIDATOR_HPP
+#pragma once
+#include "ISolver.h"
 
-#include "IValidator.hpp"
-
-class SingleThreadValidator : public IValidator {
+class SingleThreadSolver : public ISolver {
 public:
-    bool validate(const Board& b) override;
-
+    bool solve(Board& b) override;
 private:
-    bool checkRows(const Board& b);
-    bool checkCols(const Board& b);
-    bool checkBoxes(const Board& b);
+    bool solveRecursive(Board& b, int row, int col);
+    bool isValid(const Board& b, int row, int col, int num);
 };
-
-#endif // SINGLETHREADVALIDATOR_HPP

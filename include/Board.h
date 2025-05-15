@@ -1,6 +1,4 @@
-#ifndef BOARD_HPP
-#define BOARD_HPP
-
+#pragma once
 #include <string>
 
 class Board {
@@ -12,5 +10,3 @@ public:
     void set(int row, int col, int val);
     void print() const;
 };
-
-#endif

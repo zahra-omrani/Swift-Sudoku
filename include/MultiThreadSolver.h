@@ -1,18 +1,12 @@
-#ifndef MULTITHREADVALIDATOR_HPP
-#define MULTITHREADVALIDATOR_HPP
-
-#include "IValidator.hpp"
-#include <thread>
+#pragma once
+#include "ISolver.h"
+#include <future>
 #include <vector>
 
-class MultiThreadValidator : public IValidator {
+class MultiThreadSolver : public ISolver {
 public:
-    bool validate(const Board& b) override;
-
+    bool solve(Board& b) override;
 private:
-    bool validateRowsParallel(const Board& b);
-    bool validateColsParallel(const Board& b);
-    bool validateBoxesParallel(const Board& b);
+    bool solveRecursive(Board b, int row, int col); // Pass-by-value for thread safety
+    bool isValid(const Board& b, int row, int col, int num);
 };
-
-#endif // MULTITHREADVALIDATOR_HPP
