@@ -2,12 +2,14 @@
 #include "SequentialSolver.h"
 #include "SingleThreadSolver.h"
 //#include "MultiThreadSolverV1.h"
-#include "MultiThreadSolverV2.h"
+//#include "MultiThreadSolverV2.h"
+#include "MultiThreadSolverV3.h"
 #include "Timer.h"
 #include <iostream>
 #include <vector>
 #include <numeric>
 #include <algorithm>
+#include <iomanip> // for std::setprecision
 
 void printStats(const std::vector<double>& times, const std::string& label) {
     double avg = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
@@ -19,6 +21,8 @@ void printStats(const std::vector<double>& times, const std::string& label) {
     double median = sorted.size() % 2 == 0 ?
                     (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2]) / 2.0 :
                     sorted[sorted.size() / 2];
+
+    std::cout << std::fixed << std::setprecision(6);  // Show 6 decimal digits
 
     std::cout << "Statistics for " << label << ":\n";
     std::cout << "  Average time: " << avg << " ms\n";
@@ -64,11 +68,11 @@ int main() {
         {0,0,0,0,8,0,0,7,9}
     };
 
-    const int runs = 100;
+    const int runs = 3;
     SequentialSolver sequentialSolver;
     SingleThreadSolver singleThreadSolver;
     //MultiThreadSolverV1 multiThreadSolverV1;  
-    MultiThreadSolverV2 multiThreadSolverV2;
+    MultiThreadSolverV3 multiThreadSolverV3;
 
     std::cout << "Running SequentialSolver " << runs << " times...\n";
     benchmarkSolver(sequentialSolver, puzzle, "SequentialSolver", runs);
@@ -76,13 +80,11 @@ int main() {
     std::cout << "Running SingleThreadSolver " << runs << " times...\n";
     benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
 
-/*     std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
+    /* std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
     benchmarkSolver(multiThreadSolverV1, puzzle, "MultiThreadSolverV1", runs); */
 
-    std::cout << "Running MultiThreadSolverV2 " << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV2, puzzle, "MultiThreadSolverV2", runs);
-
-
+    std::cout << "Running MultiThreadSolverV3 " << runs << " times...\n";
+    benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
 
     std::cout << "Press Enter to exit...";
     std::cin.get();

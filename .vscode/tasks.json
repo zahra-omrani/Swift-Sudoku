@@ -16,7 +16,8 @@
                 "src/SequentialSolver.cpp",
                 "src/SingleThreadSolver.cpp",
                 //"src/MultiThreadSolverV1.cpp",
-                "src/MultiThreadSolverV2.cpp",
+                //"src/MultiThreadSolverV2.cpp",
+                "src/MultiThreadSolverV3.cpp",
                 "src/Timer.cpp",
                 "-o",
                 "${workspaceFolder}\\sudoku_solver.exe"
