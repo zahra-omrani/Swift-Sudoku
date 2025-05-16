@@ -68,11 +68,9 @@ int main() {
         {0,0,0,0,8,0,0,7,9}
     };
 
-    const int runs = 3;
+    const int runs = 1000;
     SequentialSolver sequentialSolver;
     SingleThreadSolver singleThreadSolver;
-    MultiThreadSolverV1 multiThreadSolverV1;  
-    MultiThreadSolverV2 multiThreadSolverV2;  
     MultiThreadSolverV3 multiThreadSolverV3;
 
     std::cout << "Running SequentialSolver " << runs << " times...\n";
@@ -81,14 +79,12 @@ int main() {
     std::cout << "Running SingleThreadSolver " << runs << " times...\n";
     benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
 
-    std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV1, puzzle, "MultiThreadSolverV1", runs);
-
-    std::cout << "Running MultiThreadSolverV2" << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV2, puzzle, "MultiThreadSolverV2", runs);
-
     std::cout << "Running MultiThreadSolverV3 " << runs << " times...\n";
     benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
+
+        // Print max threads observed for MultiThreadSolverV3 after benchmarking
+    std::cout << "Max active threads observed during MultiThreadSolverV3 runs: "
+              << MultiThreadSolverV3::maxThreadsObserved.load() << std::endl;
 
     std::cout << "Press Enter to exit...";
     std::cin.get();

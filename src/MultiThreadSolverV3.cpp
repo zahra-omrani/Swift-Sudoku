@@ -3,13 +3,26 @@
 #include <vector>
 #include <algorithm>
 #include <atomic>
+#include <iostream> // for debug printing if you want
+
+// Define static atomic counters (outside any function)
+std::atomic<int> MultiThreadSolverV3::activeThreads{0};
+std::atomic<int> MultiThreadSolverV3::maxThreadsObserved{0};
 
 bool MultiThreadSolverV3::solve(int board[9][9]) {
+    // Reset counters before solving (optional, add this method in header if you want)
+    activeThreads = 0;
+    maxThreadsObserved = 0;
+
     return solveSudoku(board, 0);
 }
 
 bool MultiThreadSolverV3::solve(Board& b) {
     int (*grid)[9] = b.getGrid();
+
+    activeThreads = 0;
+    maxThreadsObserved = 0;
+
     return solveSudoku(grid, 0);
 }
 
@@ -57,15 +70,27 @@ bool MultiThreadSolverV3::solveSudoku(int board[9][9], int depth) {
             newBoard[row][col] = num;
 
             if (depth < MAX_PARALLEL_DEPTH) {
+                // Increase activeThreads and update maxThreadsObserved if needed
+                activeThreads++;
+                int currentActive = activeThreads.load();
+                int oldMax = maxThreadsObserved.load();
+                while (currentActive > oldMax && !maxThreadsObserved.compare_exchange_weak(oldMax, currentActive)) {
+                    // loop until maxThreadsObserved updated atomically
+                }
+
                 futures.emplace_back(std::async(std::launch::async, [newBoard, depth, &solutionFound, &board, this]() mutable {
-                    if (solutionFound.load()) return false;
-                    if (solveSudoku(newBoard, depth + 1)) {
+                    if (solutionFound.load()) {
+                        activeThreads--;
+                        return false;
+                    }
+                    bool res = solveSudoku(newBoard, depth + 1);
+                    if (res) {
                         if (!solutionFound.exchange(true)) {
                             std::copy(&newBoard[0][0], &newBoard[0][0] + 81, &board[0][0]);
-                            return true;
                         }
                     }
-                    return false;
+                    activeThreads--;
+                    return res;
                 }));
             } else {
                 // Fall back to serial recursion
