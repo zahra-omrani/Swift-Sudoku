@@ -1,7 +1,7 @@
 #include "Board.h"
 #include <string>
 
-void Board::loadFromArray(int puzzle[9][9]) {
+void Board::loadFromArray(const int puzzle[9][9]) {
     for (int i = 0; i < 9; ++i)
         for (int j = 0; j < 9; ++j)
             grid[i][j] = puzzle[i][j];
