@@ -1,26 +1,25 @@
 #include "Board.h"
-#include <fstream>
-#include <iostream>
+#include <string>
 
-void Board::load(const std::string& filename) {
-    std::ifstream file(filename);
+void Board::loadFromArray(const int puzzle[9][9]) {
     for (int i = 0; i < 9; ++i)
         for (int j = 0; j < 9; ++j)
-            file >> grid[i][j];
+            grid[i][j] = puzzle[i][j];
 }
 
-int Board::at(int row, int col) const {
-    return grid[row][col];
-}
-
-void Board::set(int row, int col, int val) {
-    grid[row][col] = val;
+int (&Board::getGrid())[9][9] {
+    return grid;
 }
 
 void Board::print() const {
     for (int i = 0; i < 9; ++i) {
-        for (int j = 0; j < 9; ++j)
-            std::cout << grid[i][j] << ' ';
-        std::cout << '\n';
+        if (i % 3 == 0 && i != 0)
+            std::cout << "------+-------+------\n";
+        for (int j = 0; j < 9; ++j) {
+            if (j % 3 == 0 && j != 0)
+                std::cout << "| ";
+            std::cout << (grid[i][j] ? std::to_string(grid[i][j]) : ".") << " ";
+        }
+        std::cout << "\n";
     }
 }

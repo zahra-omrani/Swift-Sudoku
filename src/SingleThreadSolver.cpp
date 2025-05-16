@@ -1,31 +1,48 @@
 #include "SingleThreadSolver.h"
 
+bool SingleThreadSolver::solve(int board[9][9]) {
+    return solveSudoku(board);
+}
+
 bool SingleThreadSolver::solve(Board& b) {
-    return solveRecursive(b, 0, 0);
+    int (*grid)[9] = b.getGrid();
+    return solveSudoku(grid);
 }
 
-bool SingleThreadSolver::solveRecursive(Board& b, int row, int col) {
-    if (row == 9) return true;
-    if (col == 9) return solveRecursive(b, row + 1, 0);
-    if (b.at(row, col) != 0) return solveRecursive(b, row, col + 1);
-
-    for (int num = 1; num <= 9; ++num) {
-        if (isValid(b, row, col, num)) {
-            b.set(row, col, num);
-            if (solveRecursive(b, row, col + 1)) return true;
-            b.set(row, col, 0);
-        }
-    }
-    return false;
-}
-
-bool SingleThreadSolver::isValid(const Board& b, int row, int col, int num) {
+bool SingleThreadSolver::isSafe(int board[9][9], int row, int col, int num) {
+    // Check row and column
     for (int i = 0; i < 9; ++i) {
-        if (b.at(row, i) == num || b.at(i, col) == num) return false;
+        if (board[row][i] == num || board[i][col] == num)
+            return false;
     }
-    int r = row - row % 3, c = col - col % 3;
+
+    // Check 3x3 subgrid
+    int boxStartRow = row - row % 3;
+    int boxStartCol = col - col % 3;
+
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
-            if (b.at(r + i, c + j) == num) return false;
+            if (board[boxStartRow + i][boxStartCol + j] == num)
+                return false;
+
     return true;
+}
+
+bool SingleThreadSolver::solveSudoku(int board[9][9]) {
+    for (int row = 0; row < 9; ++row) {
+        for (int col = 0; col < 9; ++col) {
+            if (board[row][col] == 0) {
+                for (int num = 1; num <= 9; ++num) {
+                    if (isSafe(board, row, col, num)) {
+                        board[row][col] = num;
+                        if (solveSudoku(board))
+                            return true;
+                        board[row][col] = 0; // backtrack
+                    }
+                }
+                return false; // no number fits here
+            }
+        }
+    }
+    return true; // solved
 }
