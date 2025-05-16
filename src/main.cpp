@@ -69,9 +69,16 @@ int main() {
     };
 
     const int runs = 1000;
+
+    // === NEW: Ask user how many threads to use ===
+    int thread_count;
+    std::cout << "Enter the number of threads for MultiThreadSolverV3: ";
+    std::cin >> thread_count;
+    std::cin.ignore(); // flush newline for later std::cin.get()
+
     SequentialSolver sequentialSolver;
     SingleThreadSolver singleThreadSolver;
-    MultiThreadSolverV3 multiThreadSolverV3;
+    MultiThreadSolverV3 multiThreadSolverV3(thread_count);  // pass thread count
 
     std::cout << "Running SequentialSolver " << runs << " times...\n";
     benchmarkSolver(sequentialSolver, puzzle, "SequentialSolver", runs);
@@ -79,12 +86,8 @@ int main() {
     std::cout << "Running SingleThreadSolver " << runs << " times...\n";
     benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
 
-    std::cout << "Running MultiThreadSolverV3 " << runs << " times...\n";
+    std::cout << "Running MultiThreadSolverV3 with " << thread_count << " threads " << runs << " times...\n";
     benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
-
-        // Print max threads observed for MultiThreadSolverV3 after benchmarking
-    std::cout << "Max active threads observed during MultiThreadSolverV3 runs: "
-              << MultiThreadSolverV3::maxThreadsObserved.load() << std::endl;
 
     std::cout << "Press Enter to exit...";
     std::cin.get();

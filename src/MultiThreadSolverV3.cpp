@@ -2,28 +2,34 @@
 #include <future>
 #include <vector>
 #include <algorithm>
-#include <atomic>
-#include <iostream> // for debug printing if you want
+#include <iostream> // optional for debug
 
-// Define static atomic counters (outside any function)
+// Initialize static atomic counters
 std::atomic<int> MultiThreadSolverV3::activeThreads{0};
 std::atomic<int> MultiThreadSolverV3::maxThreadsObserved{0};
 
-bool MultiThreadSolverV3::solve(int board[9][9]) {
-    // Reset counters before solving (optional, add this method in header if you want)
-    activeThreads = 0;
-    maxThreadsObserved = 0;
+MultiThreadSolverV3::MultiThreadSolverV3(int maxThreads_) : maxThreads(maxThreads_) {}
 
-    return solveSudoku(board, 0);
+bool MultiThreadSolverV3::solve(int board[9][9]) {
+    activeThreads = 1; // main thread counts as active
+    maxThreadsObserved = 1;
+
+    bool result = solveSudoku(board, 0);
+
+    activeThreads = 0;
+    return result;
 }
 
 bool MultiThreadSolverV3::solve(Board& b) {
     int (*grid)[9] = b.getGrid();
 
-    activeThreads = 0;
-    maxThreadsObserved = 0;
+    activeThreads = 1;
+    maxThreadsObserved = 1;
 
-    return solveSudoku(grid, 0);
+    bool result = solveSudoku(grid, 0);
+
+    activeThreads = 0;
+    return result;
 }
 
 bool MultiThreadSolverV3::isSafe(int board[9][9], int row, int col, int num) {
@@ -69,13 +75,13 @@ bool MultiThreadSolverV3::solveSudoku(int board[9][9], int depth) {
             std::copy(&board[0][0], &board[0][0] + 81, &newBoard[0][0]);
             newBoard[row][col] = num;
 
-            if (depth < MAX_PARALLEL_DEPTH) {
-                // Increase activeThreads and update maxThreadsObserved if needed
+            // Check if we can spawn a new thread:
+            if (depth < MAX_PARALLEL_DEPTH && activeThreads.load() < maxThreads) {
                 activeThreads++;
                 int currentActive = activeThreads.load();
                 int oldMax = maxThreadsObserved.load();
                 while (currentActive > oldMax && !maxThreadsObserved.compare_exchange_weak(oldMax, currentActive)) {
-                    // loop until maxThreadsObserved updated atomically
+                    // try to update maxThreadsObserved
                 }
 
                 futures.emplace_back(std::async(std::launch::async, [newBoard, depth, &solutionFound, &board, this]() mutable {
@@ -93,7 +99,7 @@ bool MultiThreadSolverV3::solveSudoku(int board[9][9], int depth) {
                     return res;
                 }));
             } else {
-                // Fall back to serial recursion
+                // fallback to serial recursion if max threads reached
                 board[row][col] = num;
                 if (solveSudoku(board, depth + 1))
                     return true;

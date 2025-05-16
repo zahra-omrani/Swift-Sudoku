@@ -4,16 +4,19 @@
 
 class MultiThreadSolverV3 {
 public:
+    MultiThreadSolverV3(int maxThreads = 14); // default max threads
+
     bool solve(int board[9][9]);
     bool solve(Board& b);
-
-    static std::atomic<int> activeThreads;
-    static std::atomic<int> maxThreadsObserved;
 
 private:
     bool solveSudoku(int board[9][9], int depth);
     bool isSafe(int board[9][9], int row, int col, int num);
 
-    static constexpr int MAX_PARALLEL_DEPTH = 1; // adjust if needed
+    int maxThreads; // user-specified max threads
 
+    static std::atomic<int> activeThreads;
+    static std::atomic<int> maxThreadsObserved;
+
+    static constexpr int MAX_PARALLEL_DEPTH = 1; // control parallel recursion depth
 };
