@@ -1,8 +1,8 @@
 #include "Board.h"
 #include "SequentialSolver.h"
 #include "SingleThreadSolver.h"
-//#include "MultiThreadSolverV1.h"
-//#include "MultiThreadSolverV2.h"
+#include "MultiThreadSolverV1.h"
+#include "MultiThreadSolverV2.h"
 #include "MultiThreadSolverV3.h"
 #include "Timer.h"
 #include <iostream>
@@ -68,11 +68,17 @@ int main() {
         {0,0,0,0,8,0,0,7,9}
     };
 
-    const int runs = 3;
+    const int runs = 1000;
+
+    // === NEW: Ask user how many threads to use ===
+    int thread_count;
+    std::cout << "Enter the number of threads for MultiThreadSolverV3: ";
+    std::cin >> thread_count;
+    std::cin.ignore(); // flush newline for later std::cin.get()
+
     SequentialSolver sequentialSolver;
     SingleThreadSolver singleThreadSolver;
-    //MultiThreadSolverV1 multiThreadSolverV1;  
-    MultiThreadSolverV3 multiThreadSolverV3;
+    MultiThreadSolverV3 multiThreadSolverV3(thread_count);  // pass thread count
 
     std::cout << "Running SequentialSolver " << runs << " times...\n";
     benchmarkSolver(sequentialSolver, puzzle, "SequentialSolver", runs);
@@ -80,10 +86,7 @@ int main() {
     std::cout << "Running SingleThreadSolver " << runs << " times...\n";
     benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
 
-    /* std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV1, puzzle, "MultiThreadSolverV1", runs); */
-
-    std::cout << "Running MultiThreadSolverV3 " << runs << " times...\n";
+    std::cout << "Running MultiThreadSolverV3 with " << thread_count << " threads " << runs << " times...\n";
     benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
 
     std::cout << "Press Enter to exit...";

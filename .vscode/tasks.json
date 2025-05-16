@@ -15,8 +15,8 @@
                 "src/Board.cpp",
                 "src/SequentialSolver.cpp",
                 "src/SingleThreadSolver.cpp",
-                //"src/MultiThreadSolverV1.cpp",
-                //"src/MultiThreadSolverV2.cpp",
+                "src/MultiThreadSolverV1.cpp",
+                "src/MultiThreadSolverV2.cpp",
                 "src/MultiThreadSolverV3.cpp",
                 "src/Timer.cpp",
                 "-o",
@@ -28,7 +28,10 @@
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": "build",
+            "group": {
+            "kind": "build",
+            "isDefault": true
+            },
             "detail": "Build all source files with custom headers and output executable in workspace root"
         },
         {
