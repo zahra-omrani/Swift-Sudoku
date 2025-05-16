@@ -1,8 +1,8 @@
 #include "Board.h"
 #include "SequentialSolver.h"
 #include "SingleThreadSolver.h"
-//#include "MultiThreadSolverV1.h"
-//#include "MultiThreadSolverV2.h"
+#include "MultiThreadSolverV1.h"
+#include "MultiThreadSolverV2.h"
 #include "MultiThreadSolverV3.h"
 #include "Timer.h"
 #include <iostream>
@@ -71,7 +71,8 @@ int main() {
     const int runs = 3;
     SequentialSolver sequentialSolver;
     SingleThreadSolver singleThreadSolver;
-    //MultiThreadSolverV1 multiThreadSolverV1;  
+    MultiThreadSolverV1 multiThreadSolverV1;  
+    MultiThreadSolverV2 multiThreadSolverV2;  
     MultiThreadSolverV3 multiThreadSolverV3;
 
     std::cout << "Running SequentialSolver " << runs << " times...\n";
@@ -80,8 +81,11 @@ int main() {
     std::cout << "Running SingleThreadSolver " << runs << " times...\n";
     benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
 
-    /* std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV1, puzzle, "MultiThreadSolverV1", runs); */
+    std::cout << "Running MultiThreadSolverV1 " << runs << " times...\n";
+    benchmarkSolver(multiThreadSolverV1, puzzle, "MultiThreadSolverV1", runs);
+
+    std::cout << "Running MultiThreadSolverV2" << runs << " times...\n";
+    benchmarkSolver(multiThreadSolverV2, puzzle, "MultiThreadSolverV2", runs);
 
     std::cout << "Running MultiThreadSolverV3 " << runs << " times...\n";
     benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
