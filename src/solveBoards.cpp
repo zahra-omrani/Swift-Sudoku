@@ -2,6 +2,8 @@
 #define SEQUENTIALSOLVER_H
 
 #include "ISolver.h"
+#include <vector>
+#include <string>
 
 class SequentialSolver : public ISolver {
 public:

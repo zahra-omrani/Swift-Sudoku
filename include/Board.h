@@ -1,14 +1,22 @@
-#pragma once
-#include <iostream>
+#ifndef BOARD_H
+#define BOARD_H
+
+#include <vector>
+#include <string>
 
 class Board {
-private:
-    int grid[9][9];
 public:
-    void loadFromArray(const int puzzle[9][9]);
-    int (&getGrid())[9][9];  // Return reference to 9x9 grid
-    void print() const;
+    Board();
+
+    void loadFromString(const std::string& str);
+    bool isValid(int row, int col, int num);
+    bool solveRecursive(int row, int col);
+    void solve();
+
+    std::string toString() const;
+
+private:
+    std::vector<std::vector<int>> grid;
 };
 
-
-
+#endif

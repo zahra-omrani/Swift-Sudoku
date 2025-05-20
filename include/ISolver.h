@@ -1,15 +1,13 @@
-#pragma once
-
 #ifndef ISOLVER_H
 #define ISOLVER_H
 
-#include "Board.h"
+#include <vector>
+#include <string>
 
 class ISolver {
 public:
-    virtual bool solve(int board[9][9]) = 0;
-    virtual bool solve(Board& b) = 0;
     virtual ~ISolver() = default;
+    virtual void solveBoards(const std::vector<std::string>& boards) = 0;
 };
 
-#endif // ISOLVER_H
+#endif

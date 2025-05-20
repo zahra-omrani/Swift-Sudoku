@@ -1,95 +1,112 @@
-#include "Board.h"
-#include "SequentialSolver.h"
-#include "SingleThreadSolver.h"
-#include "MultiThreadSolverV1.h"
-#include "MultiThreadSolverV2.h"
-#include "MultiThreadSolverV3.h"
-#include "Timer.h"
 #include <iostream>
+#include <fstream>
 #include <vector>
-#include <numeric>
-#include <algorithm>
-#include <iomanip> // for std::setprecision
+#include <string>
+#include <thread>
+#include <iomanip>
+#include <mutex>
+#include <atomic>
 
-void printStats(const std::vector<double>& times, const std::string& label) {
-    double avg = std::accumulate(times.begin(), times.end(), 0.0) / times.size();
-    double min = *std::min_element(times.begin(), times.end());
-    double max = *std::max_element(times.begin(), times.end());
+#include "SequentialSolver.h"
+#include "MultiThreadSolver.h"
+#include "Timer.h"
+#include "Board.h"
 
-    std::vector<double> sorted = times;
-    std::sort(sorted.begin(), sorted.end());
-    double median = sorted.size() % 2 == 0 ?
-                    (sorted[sorted.size() / 2 - 1] + sorted[sorted.size() / 2]) / 2.0 :
-                    sorted[sorted.size() / 2];
-
-    std::cout << std::fixed << std::setprecision(6);  // Show 6 decimal digits
-
-    std::cout << "Statistics for " << label << ":\n";
-    std::cout << "  Average time: " << avg << " ms\n";
-    std::cout << "  Minimum time: " << min << " ms\n";
-    std::cout << "  Maximum time: " << max << " ms\n";
-    std::cout << "  Median time : " << median << " ms\n\n";
+std::vector<std::string> loadBoards(const std::string& filename, int count) {
+    std::vector<std::string> boards;
+    std::ifstream file(filename);
+    std::string line;
+    while (boards.size() < static_cast<size_t>(count) && std::getline(file, line)) {
+        if (!line.empty()) boards.push_back(line);
+    }
+    return boards;
 }
 
-template <typename Solver>
-void benchmarkSolver(Solver& solver, const int (&puzzle)[9][9], const std::string& label, int runs = 100) {
-    std::vector<double> times;
+class MultiThreadSolverWithProgress {
+public:
+    MultiThreadSolverWithProgress(int threadCount) : numThreads(threadCount) {}
 
-    for (int i = 0; i < runs; ++i) {
-        Board board;
-        board.loadFromArray(puzzle);
+    void solveBoardsWithProgress(const std::vector<std::string>& boards) {
+        std::atomic<size_t> index(0);
+        std::atomic<size_t> completed(0);
+        size_t total = boards.size();
+        std::mutex coutMutex;
 
-        Timer timer;
-        timer.start();
-        solver.solve(board);
-        timer.stop();
+        std::vector<std::thread> threads;
+        for (int i = 0; i < numThreads; ++i) {
+            threads.emplace_back([&, i]() {
+                while (true) {
+                    size_t currentIndex = index++;
+                    if (currentIndex >= total) break;
 
-        if (i == 0) {
-            std::cout << label << " result:\n";
-            board.print();
+                    Board board;
+                    board.loadFromString(boards[currentIndex]);
+                    board.solve();
+
+                    {
+                        std::lock_guard<std::mutex> lock(coutMutex);
+                        ++completed;
+                        float progress = (float)completed / total * 100;
+                        std::cout << "\rProgress: [" << std::string(progress / 5, '#')
+                                  << std::string(20 - progress / 5, ' ') << "] "
+                                  << std::fixed << std::setprecision(1) << progress << "% "
+                                  << std::flush;
+                    }
+                }
+            });
         }
 
-        times.push_back(static_cast<double>(timer.elapsedMilliseconds()));
+        for (auto& t : threads) t.join();
+        std::cout << std::endl;
     }
 
-    printStats(times, label);
-}
+private:
+    int numThreads;
+};
 
 int main() {
-    int puzzle[9][9] = {
-        {5,3,0,0,7,0,0,0,0},
-        {6,0,0,1,9,5,0,0,0},
-        {0,9,8,0,0,0,0,6,0},
-        {8,0,0,0,6,0,0,0,3},
-        {4,0,0,8,0,3,0,0,1},
-        {7,0,0,0,2,0,0,0,6},
-        {0,6,0,0,0,0,2,8,0},
-        {0,0,0,4,1,9,0,0,5},
-        {0,0,0,0,8,0,0,7,9}
-    };
+    int numThreads = std::thread::hardware_concurrency();
+    std::vector<std::string> boards = loadBoards("sudoku.txt", 100);
 
-    const int runs = 1000;
+    // Sequential solving with timing
+    std::cout << "Solving sequentially...\n";
+    Timer seqTimer;
+    SequentialSolver seqSolver;
+    
+    seqTimer.start();
+    seqSolver.solveBoards(boards);
+    seqTimer.stop();
+    double sequentialTime = seqTimer.elapsedMilliseconds();
 
-    // === NEW: Ask user how many threads to use ===
-    int thread_count;
-    std::cout << "Enter the number of threads for MultiThreadSolverV3: ";
-    std::cin >> thread_count;
-    std::cin.ignore(); // flush newline for later std::cin.get()
+    // Parallel solving with progress and timing
+    std::cout << "\nSolving in parallel with " << numThreads << " threads...\n";
+    Timer parTimer;
+    MultiThreadSolverWithProgress parSolver(numThreads);
+    
+    parTimer.start();
+    parSolver.solveBoardsWithProgress(boards);
+    parTimer.stop();
+    double parallelTime = parTimer.elapsedMilliseconds();
 
-    SequentialSolver sequentialSolver;
-    SingleThreadSolver singleThreadSolver;
-    MultiThreadSolverV3 multiThreadSolverV3(thread_count);  // pass thread count
+    // Summary table
+    std::cout << "\n================ Execution Time Summary ================\n";
+    std::cout << std::left << std::setw(30) << "Solver"
+              << std::setw(15) << "Time (ms)\n";
+    std::cout << "--------------------------------------------------------\n";
+    std::cout << std::left << std::setw(30) << "SequentialSolver"
+              << std::setw(15) << sequentialTime << "\n";
+    std::cout << std::left << std::setw(30) << "MultiThreadSolver (" 
+              << numThreads << " threads)" << std::setw(15) << parallelTime << "\n";
+    std::cout << "========================================================\n";
 
-    std::cout << "Running SequentialSolver " << runs << " times...\n";
-    benchmarkSolver(sequentialSolver, puzzle, "SequentialSolver", runs);
+    // Calculate and display speedup
+    if (sequentialTime > 0 && parallelTime > 0) {
+        double speedup = sequentialTime / parallelTime;
+        std::cout << "\nSpeedup: " << std::fixed << std::setprecision(2) 
+                  << speedup << "x\n";
+    }
 
-    std::cout << "Running SingleThreadSolver " << runs << " times...\n";
-    benchmarkSolver(singleThreadSolver, puzzle, "SingleThreadSolver", runs);
-
-    std::cout << "Running MultiThreadSolverV3 with " << thread_count << " threads " << runs << " times...\n";
-    benchmarkSolver(multiThreadSolverV3, puzzle, "MultiThreadSolverV3", runs);
-
-    std::cout << "Press Enter to exit...";
+    std::cout << "\nPress Enter to exit...";
     std::cin.get();
 
     return 0;
