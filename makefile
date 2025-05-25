@@ -1,17 +1,23 @@
+# Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Iinclude -O2 -g -fopenmp
+VTUNE_INCLUDE = -I/opt/intel/oneapi/vtune/latest/include
+VTUNE_LIBS = -L/opt/intel/oneapi/vtune/latest/lib64 -littnotify
 
-TEST_SRC = tests/test.cpp
-TEST_BIN = run_tests
-CATCH_SRC = src/catch_amalgamated.cpp
-PROJECT_SRC = $(filter-out src/main.cpp src/catch_amalgamated.cpp, $(wildcard src/*.cpp))
+# Source files
+SRCS = src/Board.cpp src/MultiThreadSolver.cpp src/SequentialSolver.cpp src/solveBoards.cpp src/Timer.cpp
 
-test: $(TEST_SRC)
-	$(CXX) $(CXXFLAGS) -o $(TEST_BIN) $(TEST_SRC) $(CATCH_SRC) $(PROJECT_SRC)
-	./$(TEST_BIN)
+# Targets
+.PHONY: all clean
+
+all: sudoku_solver
+
+sudoku_solver: src/main.cpp $(SRCS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lpthread
+
+sudoku_solver_vtune: src/main.cpp $(SRCS)
+	$(CXX) $(CXXFLAGS) $(VTUNE_INCLUDE) -o $@ $^ -lpthread $(VTUNE_LIBS)
+	@echo "Note: Run with 'source /opt/intel/oneapi/setvars.sh && ./sudoku_solver_vtune'"
 
 clean:
-	rm -f $(TEST_BIN)
-
-sudoku_solver: src/main.cpp $(PROJECT_SRC)
-	$(CXX) $(CXXFLAGS) -o sudoku_solver src/main.cpp $(PROJECT_SRC)
+	rm -f sudoku_solver sudoku_solver_vtune performance_results.csv

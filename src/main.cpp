@@ -3,102 +3,235 @@
 #include <vector>
 #include <string>
 #include <thread>
-#include <iomanip>
-#include <mutex>
 #include <atomic>
+#include <algorithm>
+#include <chrono>
+#include <memory>
 #include <map>
-#include <algorithm> // <--- ADD THIS LINE FOR std::sort
+#include <mutex>
+#include <condition_variable>
+#include <queue>          // Added for std::queue
+#include <functional>     // Added for std::function
+#include <utility>
 
-#include "SequentialSolver.h"
-#include "MultiThreadSolver.h"
-#include "Timer.h"
+// VTune macros
+#ifdef USE_VTUNE
+#include <ittnotify.h>
+static __itt_domain* domain = __itt_domain_create("Sudoku.Profiling");
+#define VTUNE_TASK_BEGIN(name) __itt_task_begin(domain, __itt_null, __itt_null, __itt_string_handle_create(name))
+#define VTUNE_TASK_END() __itt_task_end(domain)
+#else
+#define VTUNE_TASK_BEGIN(name)
+#define VTUNE_TASK_END()
+#endif
+
 #include "Board.h"
+#include "Timer.h"
 
-// Re-using the loadBoards function
+constexpr int DEFAULT_BOARD_COUNT = 10000;
+constexpr int WARMUP_RUNS = 1;
+constexpr int WORK_CHUNK_SIZE = 10;
+
+#include <vector>
+#include <thread>
+#include <queue>
+#include <functional>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <memory>
+
+class ThreadPool {
+public:
+    explicit ThreadPool(size_t threads) 
+        : stop(false), 
+          active_threads(std::min(threads, static_cast<size_t>(std::thread::hardware_concurrency()))),
+          busy_count(0) {
+        
+        workers.reserve(active_threads);
+        for(size_t i = 0; i < active_threads; ++i) {
+            workers.emplace_back([this] { worker_loop(); });
+        }
+    }
+
+    ~ThreadPool() {
+        shutdown();
+    }
+
+    template<class F>
+    void enqueue(F&& task) {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            tasks.emplace(std::forward<F>(task));
+        }
+        condition.notify_one();
+    }
+
+    template<class F, class... Args>
+    void enqueue_batch(size_t batch_size, F&& func, Args&&... args) {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        for(size_t i = 0; i < batch_size; ++i) {
+            tasks.emplace([=] { func(args...); });
+        }
+        condition.notify_all();
+    }
+
+    size_t getThreadCount() const { return active_threads; }
+    size_t getPendingTasks() const { return tasks.size(); }
+    size_t getBusyThreads() const { return busy_count.load(); }
+
+    void shutdown() {
+        if(stop) return;
+        
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            stop = true;
+        }
+        
+        condition.notify_all();
+        for(auto& worker : workers) {
+            if(worker.joinable()) worker.join();
+        }
+    }
+
+private:
+    void worker_loop() {
+        while(true) {
+            std::function<void()> task;
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                condition.wait(lock, [this] { 
+                    return stop || !tasks.empty(); 
+                });
+
+                if(stop && tasks.empty()) return;
+                
+                task = std::move(tasks.front());
+                tasks.pop();
+                ++busy_count;
+            }
+
+            try {
+                task();
+            } catch (...) {
+                --busy_count;
+                throw;
+            }
+
+            --busy_count;
+        }
+    }
+
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    mutable std::mutex queue_mutex;
+    std::condition_variable condition;
+    std::atomic<bool> stop;
+    std::atomic<size_t> busy_count;
+    size_t active_threads;
+};
+
+class ParallelSolver {
+public:
+    void solveBoards(const std::vector<std::string>& boards, int threadCount) {
+        const size_t batch_size = 32; // Boards per batch
+        std::atomic<size_t> next_batch{0};
+        std::vector<std::thread> workers;
+        
+        threadCount = std::min(threadCount, static_cast<int>(std::thread::hardware_concurrency()));
+        workers.reserve(threadCount);
+
+        auto worker_task = [&]() {
+            Board solver;
+            while(true) {
+                const size_t batch_start = next_batch.fetch_add(batch_size);
+                if(batch_start >= boards.size()) break;
+                
+                const size_t batch_end = std::min(batch_start + batch_size, boards.size());
+                for(size_t i = batch_start; i < batch_end; ++i) {
+                    solver.loadFromString(boards[i]);
+                    solver.solve();
+                }
+            }
+        };
+
+        // Set thread affinity (Linux example)
+        for(int i = 0; i < threadCount; ++i) {
+            workers.emplace_back([&, i] {
+                #ifdef __linux__
+                cpu_set_t cpuset;
+                CPU_ZERO(&cpuset);
+                CPU_SET(i % std::thread::hardware_concurrency(), &cpuset);
+                pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+                #endif
+                
+                worker_task();
+            });
+        }
+
+        for(auto& worker : workers) {
+            if(worker.joinable()) worker.join();
+        }
+    }
+};
+
+
+
 std::vector<std::string> loadBoards(const std::string& filename, int count) {
     std::vector<std::string> boards;
+    boards.reserve(count);  // Critical pre-allocation
+    
     std::ifstream file(filename);
+    if(!file.is_open()) {
+        std::cerr << "Error: Could not open file " << filename << "\n";
+        return boards;
+    }
+
     std::string line;
-    while (boards.size() < static_cast<size_t>(count) && std::getline(file, line)) {
-        if (!line.empty()) boards.push_back(line);
+    while(boards.size() < static_cast<size_t>(count) && std::getline(file, line)) {
+        if(!line.empty()) {
+            boards.emplace_back(std::move(line));  // Move semantics
+        }
     }
     return boards;
 }
 
+void runWarmup(const std::vector<std::string>& boards, int threadCount) {
+    ParallelSolver solver;
+    for(int i = 0; i < WARMUP_RUNS; ++i) {
+        solver.solveBoards(boards, threadCount);
+    }
+}
+
+double measureParallel(const std::vector<std::string>& boards, int threadCount) {
+    VTUNE_TASK_BEGIN("Parallel");
+    Timer timer;
+    ParallelSolver solver;
+
+    timer.start();
+    solver.solveBoards(boards, threadCount);
+    timer.stop();
+    
+    VTUNE_TASK_END();
+    return timer.elapsedMilliseconds();
+}
+
 int main() {
-    int numBoardsToSolve = 100; // As in your example table
-    std::vector<std::string> boards = loadBoards("sudoku.txt", numBoardsToSolve);
+    // Load boards first
+    auto boards = loadBoards("sudoku.txt", 10000);
+    if(boards.empty()) return 1;
 
-    // Store results for different thread counts
-    // Key: thread count, Value: time in ms
-    std::map<int, double> executionTimes;
+    // Test with optimal thread count
+    const int max_threads = std::thread::hardware_concurrency();
+    ParallelSolver solver;
 
-    // --- 1. Sequential Solving (Threads = 1) ---
-    std::cout << "Solving sequentially (1 thread) for " << numBoardsToSolve << " boards...\n";
-    Timer seqTimer;
-    SequentialSolver seqSolver;
+    auto start = std::chrono::high_resolution_clock::now();
+    solver.solveBoards(boards, max_threads);
+    auto end = std::chrono::high_resolution_clock::now();
 
-    seqTimer.start();
-    seqSolver.solveBoards(boards);
-    seqTimer.stop();
-    double sequentialTime = seqTimer.elapsedMilliseconds();
-    executionTimes[1] = sequentialTime;
-    std::cout << "Sequential time: " << sequentialTime << " ms\n\n";
-
-    // --- 2. Parallel Solving with different thread counts ---
-    // You can customize these thread counts based on your system's cores
-    std::vector<int> threadCountsToTest = {2, 4, 8, 12, 16}; // Example thread counts
-    // Add hardware_concurrency() if it's not already in the list
-    int maxHardwareConcurrency = std::thread::hardware_concurrency();
-    if (std::find(threadCountsToTest.begin(), threadCountsToTest.end(), maxHardwareConcurrency) == threadCountsToTest.end()) {
-        threadCountsToTest.push_back(maxHardwareConcurrency);
-    }
-    // Sort to ensure consistent output order
-    std::sort(threadCountsToTest.begin(), threadCountsToTest.end());
-
-
-    for (int currentThreads : threadCountsToTest) {
-        if (currentThreads == 1) continue; // Already done sequentially
-
-        std::cout << "Solving in parallel with " << currentThreads << " threads for " << numBoardsToSolve << " boards...\n";
-        Timer parTimer;
-        MultiThreadSolver parSolver(currentThreads);
-
-        parTimer.start();
-        parSolver.solveBoards(boards); // Use your MultiThreadSolver
-        parTimer.stop();
-        double parallelTime = parTimer.elapsedMilliseconds();
-        executionTimes[currentThreads] = parallelTime;
-        std::cout << "Parallel time (" << currentThreads << " threads): " << parallelTime << " ms\n\n";
-    }
-
-    // --- 3. Generate and Display Performance Table ---
-    std::cout << "\n================ Performance Table ================\n";
-    std::cout << std::left << std::setw(10) << "Boards"
-              << std::setw(10) << "Threads"
-              << std::setw(15) << "Time (ms)"
-              << std::setw(10) << "Speedup"
-              << std::setw(10) << "Efficiency\n";
-    std::cout << "---------------------------------------------------\n";
-
-    double baseTime = executionTimes[1]; // Sequential time for speedup calculation
-
-    for (const auto& pair : executionTimes) {
-        int threads = pair.first;
-        double time = pair.second;
-        double speedup = (baseTime > 0) ? (baseTime / time) : 0.0;
-        double efficiency = (threads > 0 && speedup > 0) ? (speedup / threads) : 0.0;
-
-        std::cout << std::left << std::setw(10) << numBoardsToSolve
-                  << std::setw(10) << threads
-                  << std::setw(15) << std::fixed << std::setprecision(0) << time // Time as integer
-                  << std::setw(10) << std::fixed << std::setprecision(2) << speedup
-                  << std::setw(10) << std::fixed << std::setprecision(2) << efficiency << "\n";
-    }
-    std::cout << "===================================================\n";
-
-    std::cout << "\nPress Enter to exit...";
-    std::cin.get();
+    std::cout << "Solved " << boards.size() << " boards in "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count()
+              << "ms\n";
 
     return 0;
 }

@@ -1,0 +1,10 @@
+﻿  Board.cpp
+C:\Users\LENOVO\Desktop\Computer Architecture\Final\src\Board.cpp(27,21): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  main.cpp
+  MultiThreadSolver.cpp
+  SequentialSolver.cpp
+  solveBoards.cpp
+  Timer.cpp
+  Generating Code...
+LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/OPT:ICF' specification
+  SudokuSolver.vcxproj -> C:\Users\LENOVO\Desktop\Computer Architecture\Final\x64\Release\SudokuSolver.exe

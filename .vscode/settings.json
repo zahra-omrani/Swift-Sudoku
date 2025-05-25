@@ -88,6 +88,7 @@
         "semaphore": "cpp",
         "span": "cpp",
         "text_encoding": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "bitset": "cpp"
     }
 }
