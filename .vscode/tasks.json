@@ -2,45 +2,33 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "shell",
             "label": "Build Sudoku Solver",
-            "command": "C:\\Program Files (x86)\\mingw64\\bin\\g++.exe",
+            "type": "shell",
+            "command": "g++",
             "args": [
-                "-std=c++17",
-                "-Wall",
-                "-fdiagnostics-color=always",
                 "-g",
-                "-I${workspaceFolder}/include",
-                "src/main.cpp",
-                "src/Board.cpp",
-                "src/SequentialSolver.cpp",
-                "src/MultiThreadSolver.cpp",
-                "src/Timer.cpp",
+                "-Iinclude",
+                "src/*.cpp",
                 "-o",
-                "${workspaceFolder}\\sudoku_solver.exe"
+                "build/sudoku_solver",
+                "-pthread"
             ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
+            "group": "build",
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": {
-            "kind": "build",
-            "isDefault": true
-            },
-            "detail": "Build all source files with custom headers and output executable in workspace root"
+            "detail": "Builds the Sudoku Solver project"
         },
         {
             "type": "cppbuild",
-            "label": "C/C++: g++.exe build active file",
-            "command": "C:\\Program Files (x86)\\mingw64\\bin\\g++.exe",
+            "label": "C/C++: gcc build active file",
+            "command": "/usr/bin/gcc",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}/${fileBasenameNoExtension}"
             ],
             "options": {
                 "cwd": "${fileDirname}"

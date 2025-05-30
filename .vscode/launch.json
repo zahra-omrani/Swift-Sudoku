@@ -1,19 +1,44 @@
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Run Sudoku Solver",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}\\sudoku_solver.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": true,
-            "MIMode": "gdb",
-            "miDebuggerPath": "C:\\Program Files (x86)\\mingw64\\bin\\gdb.exe",
-            "preLaunchTask": "Build Sudoku Solver"
-        }
-    ]
+#include "Utils.h"
+#include "ParallelSolver.h"
+#include "SequentialSolver.h"
+#include "Timer.h"
+
+#include <iostream>
+#include <thread>
+#include <iomanip>
+
+constexpr int MAX_BOARD_COUNT = 10000;
+constexpr int STEP = 500;
+
+int main() {
+    auto fullBoards = loadBoards("sudoku.txt", MAX_BOARD_COUNT);
+    if (fullBoards.empty()) return 1;
+
+    const int threadCount = std::thread::hardware_concurrency();
+
+    std::cout << "Boards,Sequential(ms),Parallel(" << threadCount << " threads)(ms)\n";
+
+    for (int count = STEP; count <= MAX_BOARD_COUNT; count += STEP) {
+        std::vector<std::string> boards(fullBoards.begin(), fullBoards.begin() + count);
+
+        // Sequential timing
+        SequentialSolver seqSolver;
+        Timer seqTimer;
+        seqTimer.start();
+        seqSolver.solveBoards(boards);
+        seqTimer.stop();
+
+        // Parallel timing
+        ParallelSolver parSolver;
+        Timer parTimer;
+        parTimer.start();
+        parSolver.solveBoards(boards, threadCount);
+        parTimer.stop();
+
+        std::cout << count << ","
+                  << seqTimer.elapsedMilliseconds() << ","
+                  << parTimer.elapsedMilliseconds() << "\n";
+    }
+
+    return 0;
 }
