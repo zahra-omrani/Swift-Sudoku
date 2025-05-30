@@ -7,7 +7,7 @@
 #include <chrono>
 #include <thread>
 
-constexpr int DEFAULT_BOARD_COUNT = 100;
+constexpr int DEFAULT_BOARD_COUNT = 10000;
 
 int main() {
     auto boards = loadBoards("sudoku.txt", DEFAULT_BOARD_COUNT);
